@@ -2,40 +2,23 @@ import React, { useState } from 'react';
 import {
   Box,
   Typography,
-  Card,
-  CardContent,
-  CardMedia,
-  IconButton,
-  Button,
   MenuItem,
-  Alert,
 } from '@mui/material';
 import {
-  PlayArrow,
-  MoreVert,
   Add,
-  MusicNote,
   Delete,
   Edit,
   Album as AlbumIcon,
 } from '@mui/icons-material';
-import { useGetAlbumsQuery, useDeleteAlbumMutation } from '../store/api/albumApi';
-import { useGetSongsQuery } from '../store/api/audioApi';
-import { useNotification } from '../contexts/NotificationContext';
-import AlbumModal from '../components/Album/AlbumModal';
-import AlbumViewModal from '../components/Album/AlbumViewModal';
-import StyledMenu from '../components/common/StyledMenu';
-import StyledButton from '../components/common/StyledButton';
-import StyledAlert from '../components/common/StyledAlert';
-import { COLORS, BORDER_RADIUS, SHADOWS, BACKDROP_FILTERS } from '../utils/themeConstants';
-import type { Album } from '../types';
-import { getAlbumCoverUrl } from '../utils/songUtils';
-import AlbumCard from '../components/common/AlbumCard';
+import { useAlbums, useDeleteAlbum, useGetSongs } from '@/hooks';
+import { useNotification } from '@/contexts';
+import { AlbumModal, AlbumViewModal, AlbumCard, StyledMenu, StyledButton, StyledAlert, AlbumCardSkeleton } from '@/components';
+import type { Album } from '@/types';
 
 const Albums: React.FC = () => {
-  const { data: albums = [], isLoading, error } = useGetAlbumsQuery();
-  const { data: songs = [] } = useGetSongsQuery();
-  const [deleteAlbum] = useDeleteAlbumMutation();
+  const { data: albums = [], loading: isLoading, error, refresh } = useAlbums();
+  const { data: songs = [] } = useGetSongs();
+  const { mutate: deleteAlbum } = useDeleteAlbum();
   const { showNotification } = useNotification();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -60,9 +43,13 @@ const Albums: React.FC = () => {
     if (!selectedAlbum) return;
 
     try {
-      await deleteAlbum(selectedAlbum.id).unwrap();
-      showNotification('Album deleted successfully', 'success');
-      handleMenuClose();
+      const result = await deleteAlbum(selectedAlbum.id);
+      if (result !== null) {
+        showNotification('Album deleted successfully', 'success');
+        handleMenuClose();
+      } else {
+        showNotification('Failed to delete album', 'error');
+      }
     } catch (err) {
       showNotification('Failed to delete album', 'error');
     }
@@ -76,20 +63,7 @@ const Albums: React.FC = () => {
     }
   };
 
-  const getAlbumSongs = (album: Album) => {
-    return songs.filter(song => album.songIds.includes(song.id));
-  };
 
-  const getTotalDuration = (album: Album) => {
-    const albumSongs = getAlbumSongs(album);
-    return albumSongs.reduce((total, song) => total + song.duration, 0);
-  };
-
-  const formatDuration = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
 
   if (error) {
     return (
@@ -104,30 +78,41 @@ const Albums: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Box>
-          <Typography variant="h4" sx={{ color: '#ffffff', fontWeight: 700, mb: 1 }}>
-            Albums
-          </Typography>
-          <Typography variant="body1" sx={{ color: '#8e8e93' }}>
-            {albums.length} albums in your library
-          </Typography>
+              <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'flex-start', sm: 'center' }, 
+          mb: 4,
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 0 }
+        }}>
+          <Box>
+            <Typography variant="h4" sx={{ 
+              color: '#ffffff', 
+              fontWeight: 700, 
+              mb: 1,
+              fontSize: { xs: '1.75rem', sm: '2.125rem' }
+            }}>
+              Albums
+            </Typography>
+            <Typography variant="body1" sx={{ color: '#8e8e93' }}>
+              {(albums || []).length} album(s) in your library
+            </Typography>
+          </Box>
+          <StyledButton
+            variant="primary"
+            startIcon={<Add />}
+            onClick={() => setCreateModalOpen(true)}
+            sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}
+          >
+            Create Album
+          </StyledButton>
         </Box>
-        <StyledButton
-          variant="primary"
-          startIcon={<Add />}
-          onClick={() => setCreateModalOpen(true)}
-        >
-          Create Album
-        </StyledButton>
-      </Box>
 
       {/* Albums Grid */}
       {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <Typography sx={{ color: '#8e8e93' }}>Loading albums...</Typography>
-        </Box>
-      ) : albums.length === 0 ? (
+        <AlbumCardSkeleton count={6} />
+      ) : (albums || []).length === 0 ? (
         <Box sx={{ textAlign: 'center', p: 4 }}>
           <AlbumIcon sx={{ fontSize: 64, color: '#8e8e93', mb: 2 }} />
           <Typography variant="h6" sx={{ color: '#ffffff', mb: 1 }}>
@@ -145,12 +130,16 @@ const Albums: React.FC = () => {
           </StyledButton>
         </Box>
       ) : (
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 3 }}>
-          {albums.map((album) => (
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(auto-fill, minmax(280px, 1fr))' }, 
+          gap: { xs: 2, sm: 3 } 
+        }}>
+          {(albums || []).map((album: any) => (
             <AlbumCard
               key={album.id}
               album={album}
-              songs={songs}
+              songs={songs || []}
               onClick={() => {
                 setViewAlbum(album);
                 setViewModalOpen(true);
@@ -181,6 +170,7 @@ const Albums: React.FC = () => {
       <AlbumModal 
         open={createModalOpen} 
         onClose={() => setCreateModalOpen(false)}
+        onSuccess={refresh}
       />
 
       {/* Edit Album Modal */}
@@ -191,6 +181,7 @@ const Albums: React.FC = () => {
           setEditAlbum(null);
         }}
         album={editAlbum || undefined}
+        onSuccess={refresh}
       />
 
       {/* Album View Modal */}
@@ -198,7 +189,7 @@ const Albums: React.FC = () => {
         open={viewModalOpen}
         onClose={() => setViewModalOpen(false)}
         album={viewAlbum}
-        songs={songs}
+        songs={songs || []}
       />
     </Box>
   );

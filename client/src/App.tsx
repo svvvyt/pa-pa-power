@@ -1,19 +1,12 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { NotificationProvider } from './contexts/NotificationContext';
-import { AuthProvider } from './contexts/AuthContext';
-import Layout from './components/Layout/Layout';
-import ProtectedRoute from './components/ProtectedRoute';
-import Home from './pages/Home';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Songs from './pages/Songs';
-import Playlists from './pages/Playlists';
-import Albums from './pages/Albums';
-import { AudioPlayerProvider } from './contexts/AudioPlayerContext';
+import { AuthProvider, NotificationProvider, AudioPlayerProvider } from '@/contexts';
+import { Layout, ProtectedRoute, ErrorBoundary } from '@/components';
+import { Home, Login, Register, Songs, Playlists, Albums } from '@/pages';
 
 function App() {
   return (
+    <ErrorBoundary>
     <AuthProvider>
       <NotificationProvider>
         <AudioPlayerProvider>
@@ -29,7 +22,9 @@ function App() {
                   path="/songs"
                   element={
                     <ProtectedRoute>
+                        <ErrorBoundary>
                       <Songs />
+                        </ErrorBoundary>
                     </ProtectedRoute>
                   }
                 />
@@ -37,7 +32,9 @@ function App() {
                   path="/playlists"
                   element={
                     <ProtectedRoute>
+                        <ErrorBoundary>
                       <Playlists />
+                        </ErrorBoundary>
                     </ProtectedRoute>
                   }
                 />
@@ -45,7 +42,9 @@ function App() {
                   path="/albums"
                   element={
                     <ProtectedRoute>
+                        <ErrorBoundary>
                       <Albums />
+                        </ErrorBoundary>
                     </ProtectedRoute>
                   }
                 />
@@ -53,7 +52,9 @@ function App() {
                   path="/profile"
                   element={
                     <ProtectedRoute>
+                        <ErrorBoundary>
                       <div>Profile Page (Coming Soon)</div>
+                        </ErrorBoundary>
                     </ProtectedRoute>
                   }
                 />
@@ -66,6 +67,7 @@ function App() {
         </AudioPlayerProvider>
       </NotificationProvider>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

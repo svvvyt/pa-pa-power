@@ -168,6 +168,25 @@ class Database {
     });
   }
 
+  async getPlaylistById(id: string): Promise<Playlist | null> {
+    return new Promise((resolve, reject) => {
+      this.db.get('SELECT * FROM playlists WHERE id = ?', [id], (err, row: any) => {
+        if (err) reject(err);
+        else {
+          if (row) {
+            const playlist = {
+              ...row,
+              songIds: JSON.parse(row.songIds)
+            };
+            resolve(playlist as Playlist);
+          } else {
+            resolve(null);
+          }
+        }
+      });
+    });
+  }
+
   async updatePlaylist(playlist: Playlist): Promise<void> {
     return new Promise((resolve, reject) => {
       this.db.run(

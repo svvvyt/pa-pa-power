@@ -1,116 +1,79 @@
-import { Router, Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import { db } from '../configs/database';
+import { Router, Request, Response, NextFunction } from 'express';
 import { authenticateToken } from '../middlewares/auth';
-import { Album } from '../types';
+import { AlbumService } from '../services/AlbumService';
+import { validate, albumCreateSchema, albumUpdateSchema } from '../utils/validation';
 
 const router = Router();
 
 // Create album
-router.post('/', authenticateToken, async (req: Request, res: Response) => {
+router.post('/', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, artist, description, songIds } = req.body;
-
-    if (!name || !artist) {
-      return res.status(400).json({ error: 'Album name and artist are required' });
-    }
-
-    const album: Album = {
-      id: uuidv4(),
-      name,
-      artist,
-      description,
-      songIds: songIds || [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    await db.createAlbum(album);
+    const validatedData = validate(albumCreateSchema, req.body);
+    const album = await AlbumService.createAlbum(validatedData);
     res.status(201).json(album);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create album' });
+    next(error);
   }
 });
 
 // Get all albums
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const albums = await db.getAllAlbums();
-    // For each album, set coverImage to the albumCover of the first song (if any)
-    const albumsWithCovers = await Promise.all(
-      albums.map(async (album) => {
-        if (album.songIds && album.songIds.length > 0) {
-          const firstSong = await db.getSongById(album.songIds[0]);
-          return {
-            ...album,
-            coverImage: firstSong?.albumCover || album.coverImage || null,
-          };
-        }
-        return album;
-      })
-    );
-    res.json(albumsWithCovers);
+    const albums = await AlbumService.getAllAlbums();
+    res.json(albums);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch albums' });
+    next(error);
   }
 });
 
 // Get album by ID
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const album = await db.getAlbumById(req.params.id);
-    if (!album) {
-      return res.status(404).json({ error: 'Album not found' });
-    }
+    const album = await AlbumService.getAlbumById(req.params.id);
     res.json(album);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch album' });
+    next(error);
   }
 });
 
 // Update album
-router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
+router.put('/:id', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, artist, description, songIds, releaseDate, coverImage } = req.body;
-    const existingAlbums = await db.getAllAlbums();
-    const album = existingAlbums.find((a: Album) => a.id === req.params.id);
-    
-    if (!album) {
-      return res.status(404).json({ error: 'Album not found' });
-    }
-
-    const updatedAlbum: Album = {
-      ...album,
-      name: name || album.name,
-      artist: artist || album.artist,
-      description: description !== undefined ? description : album.description,
-      songIds: songIds || album.songIds,
-      releaseDate: releaseDate !== undefined ? releaseDate : album.releaseDate,
-      coverImage: coverImage !== undefined ? coverImage : album.coverImage,
-      updatedAt: new Date().toISOString()
-    };
-
-    await db.updateAlbum(updatedAlbum);
-    res.json(updatedAlbum);
+    const validatedData = validate(albumUpdateSchema, req.body);
+    const album = await AlbumService.updateAlbum(req.params.id, validatedData);
+    res.json(album);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update album' });
+    next(error);
   }
 });
 
 // Delete album
-router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
+router.delete('/:id', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const existingAlbums = await db.getAllAlbums();
-    const album = existingAlbums.find((a: Album) => a.id === req.params.id);
-    
-    if (!album) {
-      return res.status(404).json({ error: 'Album not found' });
-    }
-
-    await db.deleteAlbum(req.params.id);
+    await AlbumService.deleteAlbum(req.params.id);
     res.status(204).send();
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete album' });
+    next(error);
+  }
+});
+
+// Add song to album
+router.post('/:id/songs/:songId', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const album = await AlbumService.addSongToAlbum(req.params.id, req.params.songId);
+    res.json(album);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Remove song from album
+router.delete('/:id/songs/:songId', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const album = await AlbumService.removeSongFromAlbum(req.params.id, req.params.songId);
+    res.json(album);
+  } catch (error) {
+    next(error);
   }
 });
 

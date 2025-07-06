@@ -6,12 +6,10 @@ import {
   Link,
   CircularProgress,
 } from '@mui/material';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '@/hooks';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import StyledTextField from '../components/common/StyledTextField';
-import StyledButton from '../components/common/StyledButton';
-import StyledAlert from '../components/common/StyledAlert';
-import { COLORS, BORDER_RADIUS, SHADOWS, BACKDROP_FILTERS } from '../utils/themeConstants';
+import { StyledTextField, StyledButton, StyledAlert } from '@/components';
+import { COLORS, BORDER_RADIUS, SHADOWS, BACKDROP_FILTERS } from '@/utils';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -44,9 +42,9 @@ const Login: React.FC = () => {
       <Paper
         elevation={0}
         sx={{
-          p: 5,
+          p: { xs: 3, sm: 5 },
           width: '100%',
-          maxWidth: 400,
+          maxWidth: { xs: '100%', sm: 400 },
           borderRadius: BORDER_RADIUS.xlarge,
           background: COLORS.background.paper,
           boxShadow: SHADOWS.medium,

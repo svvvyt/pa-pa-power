@@ -1,20 +1,22 @@
-import { Router, Request, Response } from 'express';
-import { db } from '../configs/database';
+import { Router, Request, Response, NextFunction } from 'express';
 import { authenticateToken } from '../middlewares/auth';
+import { AuthService } from '../services/AuthService';
+import { validate, userFavoritesSchema } from '../utils/validation';
 
 const router = Router();
 
 // Update user favorites
-router.put('/favorites', authenticateToken, async (req: Request, res: Response) => {
+router.put('/favorites', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { favoriteSongIds } = req.body;
     if (!req.user) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
-    await db.updateUserFavorites(req.user.userId, favoriteSongIds);
+    
+    const validatedData = validate(userFavoritesSchema, req.body);
+    await AuthService.updateUserFavorites(req.user.userId, validatedData.favoriteSongIds);
     res.json({ message: 'Favorites updated successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update favorites' });
+    next(error);
   }
 });
 

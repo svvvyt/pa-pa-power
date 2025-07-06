@@ -1,11 +1,19 @@
 import React from 'react';
 import type { ReactNode } from 'react';
 import { Box, Container, CssBaseline, ThemeProvider, createTheme, GlobalStyles } from '@mui/material';
-import Header from './Header';
-import AudioPlayer from '../AudioPlayer/AudioPlayer';
+import { Header, AudioPlayer } from '@/components';
 
 
 const theme = createTheme({
+  breakpoints: {
+    values: {
+      xs: 0,
+      sm: 600,
+      md: 960,
+      lg: 1280,
+      xl: 1920,
+    },
+  },
   palette: {
     mode: 'dark',
     primary: {
@@ -133,7 +141,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <Box sx={{ position: 'sticky', top: 0, zIndex: 1200 }}>
           <Header />
         </Box>
-        <Container component="main" sx={{ flexGrow: 1, py: 3, pb: 10 }}>
+        <Container 
+          component="main" 
+          maxWidth={false}
+          sx={{ 
+            flexGrow: 1, 
+            py: { xs: 2, sm: 3 }, 
+            pb: { xs: 8, sm: 10 },
+            px: { xs: 2, sm: 3, md: 4 }
+          }}
+        >
           {children}
         </Container>
         <AudioPlayer />

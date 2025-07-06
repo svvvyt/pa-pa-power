@@ -2,39 +2,23 @@ import React, { useState } from 'react';
 import {
   Box,
   Typography,
-  Card,
-  CardContent,
-  CardMedia,
-  IconButton,
-  Grid,
   MenuItem,
 } from '@mui/material';
 import {
-  PlayArrow,
-  MoreVert,
   Add,
-  MusicNote,
   Delete,
   Edit,
-  PlaylistPlay,
+  MusicNote,
 } from '@mui/icons-material';
-import { useGetPlaylistsQuery, useDeletePlaylistMutation } from '../store/api/playlistApi';
-import { useGetSongsQuery } from '../store/api/audioApi';
-import { useUI } from '../hooks/useUI';
-import { useNotification } from '../contexts/NotificationContext';
-import PlaylistModal from '../components/Playlist/PlaylistModal';
-import PlaylistViewModal from '../components/Playlist/PlaylistViewModal';
-import type { Playlist } from '../types';
-import { getPlaylistCoverUrl } from '../utils/playlistUtils';
-import PlaylistCard from '../components/common/PlaylistCard';
-import StyledButton from '../components/common/StyledButton';
-import StyledAlert from '../components/common/StyledAlert';
-import StyledMenu from '../components/common/StyledMenu';
+import { useGetPlaylists, useDeletePlaylist, useGetSongs, useUI } from '@/hooks';
+import { useNotification } from '@/contexts';
+import { PlaylistModal, PlaylistViewModal, PlaylistCard, StyledButton, StyledAlert, StyledMenu, PlaylistCardSkeleton } from '@/components';
+import type { Playlist } from '@/types';
 
 const Playlists: React.FC = () => {
-  const { data: playlists = [], isLoading, error } = useGetPlaylistsQuery();
-  const { data: songs = [] } = useGetSongsQuery();
-  const [deletePlaylist] = useDeletePlaylistMutation();
+  const { data: playlists = [], loading: isLoading, error, refresh } = useGetPlaylists();
+  const { data: songs = [] } = useGetSongs();
+  const { mutate: deletePlaylist } = useDeletePlaylist();
   const { openPlaylistModal, playlistModalOpen, closePlaylistModal } = useUI();
   const { showNotification } = useNotification();
 
@@ -59,9 +43,13 @@ const Playlists: React.FC = () => {
     if (!selectedPlaylist) return;
 
     try {
-      await deletePlaylist(selectedPlaylist.id).unwrap();
-      showNotification('Playlist deleted successfully', 'success');
-      handleMenuClose();
+      const result = await deletePlaylist(selectedPlaylist.id);
+      if (result !== null) {
+        showNotification('Playlist deleted successfully', 'success');
+        handleMenuClose();
+      } else {
+        showNotification('Failed to delete playlist', 'error');
+      }
     } catch (err) {
       showNotification('Failed to delete playlist', 'error');
     }
@@ -73,21 +61,6 @@ const Playlists: React.FC = () => {
       setEditModalOpen(true);
       handleMenuClose();
     }
-  };
-
-  const getPlaylistSongs = (playlist: Playlist) => {
-    return songs.filter(song => playlist.songIds.includes(song.id));
-  };
-
-  const getTotalDuration = (playlist: Playlist) => {
-    const playlistSongs = getPlaylistSongs(playlist);
-    return playlistSongs.reduce((total, song) => total + song.duration, 0);
-  };
-
-  const formatDuration = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
   if (error) {
@@ -103,30 +76,41 @@ const Playlists: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Box>
-          <Typography variant="h4" sx={{ color: '#ffffff', fontWeight: 700, mb: 1 }}>
-            Playlists
-          </Typography>
-          <Typography variant="body1" sx={{ color: '#8e8e93' }}>
-            {playlists.length} playlists in your library
-          </Typography>
+              <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'flex-start', sm: 'center' }, 
+          mb: 4,
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 0 }
+        }}>
+          <Box>
+            <Typography variant="h4" sx={{ 
+              color: '#ffffff', 
+              fontWeight: 700, 
+              mb: 1,
+              fontSize: { xs: '1.75rem', sm: '2.125rem' }
+            }}>
+              Playlists
+            </Typography>
+            <Typography variant="body1" sx={{ color: '#8e8e93' }}>
+              {(playlists || []).length} playlist(s) in your library
+            </Typography>
+          </Box>
+          <StyledButton
+            variant="primary"
+            startIcon={<Add />}
+            onClick={openPlaylistModal}
+            sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}
+          >
+            Create Playlist
+          </StyledButton>
         </Box>
-        <StyledButton
-          variant="primary"
-          startIcon={<Add />}
-          onClick={openPlaylistModal}
-        >
-          Create Playlist
-        </StyledButton>
-      </Box>
 
       {/* Playlists Grid */}
       {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <Typography sx={{ color: '#8e8e93' }}>Loading playlists...</Typography>
-        </Box>
-      ) : playlists.length === 0 ? (
+        <PlaylistCardSkeleton count={8} />
+      ) : (playlists || []).length === 0 ? (
         <Box sx={{ textAlign: 'center', p: 4 }}>
           <MusicNote sx={{ fontSize: 64, color: '#8e8e93', mb: 2 }} />
           <Typography variant="h6" sx={{ color: '#ffffff', mb: 1 }}>
@@ -144,21 +128,24 @@ const Playlists: React.FC = () => {
           </StyledButton>
         </Box>
       ) : (
-        <Grid container spacing={3}>
-          {playlists.map((playlist) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={playlist.id}>
-              <PlaylistCard
-                playlist={playlist}
-                songs={songs}
-                onClick={() => {
-                  setViewPlaylist(playlist);
-                  setViewModalOpen(true);
-                }}
-                onOptions={handleMenuOpen}
-              />
-            </Grid>
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(auto-fill, minmax(280px, 1fr))' }, 
+          gap: { xs: 2, sm: 3 } 
+        }}>
+          {(playlists || []).map((playlist: any) => (
+            <PlaylistCard
+              key={playlist.id}
+              playlist={playlist}
+              songs={songs || []}
+              onClick={() => {
+                setViewPlaylist(playlist);
+                setViewModalOpen(true);
+              }}
+              onOptions={handleMenuOpen}
+            />
           ))}
-        </Grid>
+        </Box>
       )}
 
       {/* Playlist Menu */}
@@ -181,6 +168,7 @@ const Playlists: React.FC = () => {
       <PlaylistModal 
         open={playlistModalOpen} 
         onClose={closePlaylistModal}
+        onSuccess={refresh}
       />
 
       {/* Edit Playlist Modal */}
@@ -191,6 +179,7 @@ const Playlists: React.FC = () => {
           setEditPlaylist(null);
         }}
         playlist={editPlaylist || undefined}
+        onSuccess={refresh}
       />
 
       {/* Playlist View Modal */}
@@ -198,7 +187,7 @@ const Playlists: React.FC = () => {
         open={viewModalOpen}
         onClose={() => setViewModalOpen(false)}
         playlist={viewPlaylist}
-        songs={songs}
+        songs={songs || []}
       />
     </Box>
   );

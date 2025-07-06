@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useRef } from 'react';
-import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import {
   setCurrentSong,
   setIsPlaying,
@@ -16,8 +16,8 @@ import {
   play,
   pause,
   resume,
-} from '../store/slices/audioPlayerSlice';
-import type { Song } from '../types';
+} from '@/store/slices/audioPlayerSlice';
+import type { Song } from '@/types';
 import type { RefObject } from 'react';
 
 interface AudioPlayerContextType {

@@ -1,99 +1,79 @@
-import { Router, Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import { db } from '../configs/database';
+import { Router, Request, Response, NextFunction } from 'express';
 import { authenticateToken } from '../middlewares/auth';
-import { Playlist } from '../types';
+import { PlaylistService } from '../services/PlaylistService';
+import { validate, playlistCreateSchema, playlistUpdateSchema } from '../utils/validation';
 
 const router = Router();
 
 // Create playlist
-router.post('/', authenticateToken, async (req: Request, res: Response) => {
+router.post('/', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, description, songIds } = req.body;
-
-    if (!name) {
-      return res.status(400).json({ error: 'Playlist name is required' });
-    }
-
-    const playlist: Playlist = {
-      id: uuidv4(),
-      name,
-      description,
-      songIds: songIds || [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    await db.createPlaylist(playlist);
+    const validatedData = validate(playlistCreateSchema, req.body);
+    const playlist = await PlaylistService.createPlaylist(validatedData);
     res.status(201).json(playlist);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create playlist' });
+    next(error);
   }
 });
 
 // Get all playlists
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const playlists = await db.getAllPlaylists();
-    // For each playlist, set coverImage to the albumCover of the first song (if any)
-    const playlistsWithCovers = await Promise.all(
-      playlists.map(async (playlist) => {
-        if (playlist.songIds && playlist.songIds.length > 0) {
-          const firstSong = await db.getSongById(playlist.songIds[0]);
-          return {
-            ...playlist,
-            coverImage: firstSong?.albumCover || null,
-          };
-        }
-        return playlist;
-      })
-    );
-    res.json(playlistsWithCovers);
+    const playlists = await PlaylistService.getAllPlaylists();
+    res.json(playlists);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch playlists' });
+    next(error);
+  }
+});
+
+// Get playlist by ID
+router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const playlist = await PlaylistService.getPlaylistById(req.params.id);
+    res.json(playlist);
+  } catch (error) {
+    next(error);
   }
 });
 
 // Update playlist
-router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
+router.put('/:id', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, description, songIds } = req.body;
-    const existingPlaylists = await db.getAllPlaylists();
-    const playlist = existingPlaylists.find((p: Playlist) => p.id === req.params.id);
-    
-    if (!playlist) {
-      return res.status(404).json({ error: 'Playlist not found' });
-    }
-
-    const updatedPlaylist: Playlist = {
-      ...playlist,
-      name: name || playlist.name,
-      description: description !== undefined ? description : playlist.description,
-      songIds: songIds || playlist.songIds,
-      updatedAt: new Date().toISOString()
-    };
-
-    await db.updatePlaylist(updatedPlaylist);
-    res.json(updatedPlaylist);
+    const validatedData = validate(playlistUpdateSchema, req.body);
+    const playlist = await PlaylistService.updatePlaylist(req.params.id, validatedData);
+    res.json(playlist);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update playlist' });
+    next(error);
   }
 });
 
 // Delete playlist
-router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
+router.delete('/:id', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const existingPlaylists = await db.getAllPlaylists();
-    const playlist = existingPlaylists.find((p: Playlist) => p.id === req.params.id);
-    
-    if (!playlist) {
-      return res.status(404).json({ error: 'Playlist not found' });
-    }
-
-    await db.deletePlaylist(req.params.id);
+    await PlaylistService.deletePlaylist(req.params.id);
     res.status(204).send();
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete playlist' });
+    next(error);
+  }
+});
+
+// Add song to playlist
+router.post('/:id/songs/:songId', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const playlist = await PlaylistService.addSongToPlaylist(req.params.id, req.params.songId);
+    res.json(playlist);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Remove song from playlist
+router.delete('/:id/songs/:songId', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const playlist = await PlaylistService.removeSongFromPlaylist(req.params.id, req.params.songId);
+    res.json(playlist);
+  } catch (error) {
+    next(error);
   }
 });
 

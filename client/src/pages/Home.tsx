@@ -2,11 +2,6 @@ import React from 'react';
 import {
   Box,
   Typography,
-  Button,
-  Card,
-  CardContent,
-  CardMedia,
-  Paper,
   CircularProgress,
 } from '@mui/material';
 import {
@@ -19,28 +14,22 @@ import {
   AccessTime,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { useGetSongsQuery } from '../store/api/audioApi';
-import { useGetPlaylistsQuery } from '../store/api/playlistApi';
-import StatsCard from '../components/Dashboard/StatsCard';
-import { formatDuration, getAlbumCoverUrl } from '../utils/songUtils';
-import type { Song } from '../types';
+import { useAuth, useGetSongs, useGetPlaylists } from '@/hooks';
+import { StatsCard, StyledButton, StyledCard, CoverAvatar } from '@/components';
+import { formatDuration, getAlbumCoverUrl } from '@/utils';
+import type { Song } from '@/types';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   
-  const { data: songs = [], isLoading: songsLoading } = useGetSongsQuery(undefined, {
-    skip: !isAuthenticated,
-  });
-  const { data: playlists = [], isLoading: playlistsLoading } = useGetPlaylistsQuery(undefined, {
-    skip: !isAuthenticated,
-  });
+  const { data: songs = [], loading: songsLoading } = useGetSongs();
+  const { data: playlists = [], loading: playlistsLoading } = useGetPlaylists();
 
-  const totalSongs = songs.length;
-  const totalPlaylists = playlists.length;
-  const totalDuration = songs.reduce((total, song) => total + song.duration, 0);
-  const recentSongs = [...songs]
+  const totalSongs = (songs || []).length;
+  const totalPlaylists = (playlists || []).length;
+  const totalDuration = (songs || []).reduce((total: number, song: any) => total + song.duration, 0);
+  const recentSongs = [...(songs || [])]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5);
 
@@ -70,8 +59,7 @@ const Home: React.FC = () => {
   return (
     <Box>
       {/* Hero Section */}
-      <Paper
-        elevation={0}
+      <StyledCard
         sx={{
           background: 'linear-gradient(135deg, rgba(28,28,30,0.9) 0%, rgba(44,44,46,0.8) 100%)',
           color: '#ffffff',
@@ -80,100 +68,95 @@ const Home: React.FC = () => {
           textAlign: 'center',
           borderRadius: 5,
           mb: 6,
-          boxShadow: '0 4px 24px 0 rgba(0,0,0,0.4)',
           backdropFilter: 'blur(12px)',
           border: '1px solid rgba(255,255,255,0.1)',
         }}
       >
-        <Typography variant="h2" component="h1" gutterBottom sx={{ fontWeight: 800, letterSpacing: -2, fontSize: 48, color: '#ffffff' }}>
+        <Typography variant="h2" component="h1" gutterBottom sx={{ 
+          fontWeight: 800, 
+          letterSpacing: -2, 
+          fontSize: { xs: 32, sm: 40, md: 48 }, 
+          color: '#ffffff',
+          textAlign: { xs: 'center', sm: 'center' }
+        }}>
           Welcome to Pa-Pa-Power
         </Typography>
-        <Typography variant="h5" component="h2" gutterBottom sx={{ mb: 4, opacity: 0.9, fontWeight: 500, color: '#8e8e93' }}>
+        <Typography variant="h5" component="h2" gutterBottom sx={{ 
+          mb: 4, 
+          opacity: 0.9, 
+          fontWeight: 500, 
+          color: '#8e8e93',
+          fontSize: { xs: '1.1rem', sm: '1.25rem' },
+          textAlign: { xs: 'center', sm: 'center' }
+        }}>
           Your personal audio player with powerful features
         </Typography>
-        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2 }, justifyContent: 'center', flexWrap: 'wrap' }}>
           {isAuthenticated ? (
             <>
-              <Button
-                variant="contained"
+              <StyledButton
+                variant="primary"
                 size="large"
                 onClick={() => navigate('/songs')}
                 sx={{
-                  bgcolor: '#0a84ff',
-                  color: '#ffffff',
-                  borderRadius: 999,
                   px: 4,
-                  fontWeight: 600,
                   fontSize: 18,
-                  boxShadow: '0 2px 8px 0 rgba(10,132,255,0.3)',
-                  '&:hover': { bgcolor: '#0070d1' },
                 }}
               >
                 Browse Songs
-              </Button>
-              <Button
-                variant="outlined"
+              </StyledButton>
+              <StyledButton
+                variant="outline"
                 size="large"
                 onClick={() => navigate('/playlists')}
                 sx={{
-                  borderColor: '#0a84ff',
-                  color: '#0a84ff',
-                  borderRadius: 999,
                   px: 4,
-                  fontWeight: 600,
                   fontSize: 18,
-                  bgcolor: 'rgba(10,132,255,0.1)',
-                  '&:hover': { bgcolor: 'rgba(10,132,255,0.2)' },
                 }}
               >
                 My Playlists
-              </Button>
+              </StyledButton>
             </>
           ) : (
             <>
-              <Button
-                variant="contained"
+              <StyledButton
+                variant="primary"
                 size="large"
                 onClick={() => navigate('/register')}
                 sx={{
-                  bgcolor: '#0a84ff',
-                  color: '#ffffff',
-                  borderRadius: 999,
                   px: 4,
-                  fontWeight: 600,
                   fontSize: 18,
-                  boxShadow: '0 2px 8px 0 rgba(10,132,255,0.3)',
-                  '&:hover': { bgcolor: '#0070d1' },
                 }}
               >
                 Get Started
-              </Button>
-              <Button
-                variant="outlined"
+              </StyledButton>
+              <StyledButton
+                variant="outline"
                 size="large"
                 onClick={() => navigate('/login')}
                 sx={{
-                  borderColor: '#0a84ff',
-                  color: '#0a84ff',
-                  borderRadius: 999,
                   px: 4,
-                  fontWeight: 600,
                   fontSize: 18,
-                  bgcolor: 'rgba(10,132,255,0.1)',
-                  '&:hover': { bgcolor: 'rgba(10,132,255,0.2)' },
                 }}
               >
                 Sign In
-              </Button>
+              </StyledButton>
             </>
           )}
         </Box>
-      </Paper>
+      </StyledCard>
 
       {/* Dashboard Section for Authenticated Users */}
       {isAuthenticated && (
         <Box sx={{ mb: 6 }}>
-          <Typography variant="h4" component="h2" gutterBottom sx={{ mb: 4, textAlign: 'center', fontWeight: 700, letterSpacing: -1, color: '#ffffff' }}>
+          <Typography variant="h4" component="h2" gutterBottom sx={{ 
+            mb: 4, 
+            textAlign: 'center', 
+            fontWeight: 700, 
+            letterSpacing: -1, 
+            color: '#ffffff',
+            fontSize: { xs: '1.75rem', sm: '2.125rem' }
+          }}>
             Your Music Dashboard
           </Typography>
           
@@ -182,7 +165,12 @@ const Home: React.FC = () => {
               <CircularProgress />
             </Box>
           ) : (
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 4, mb: 4 }}>
+            <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(auto-fit, minmax(220px, 1fr))' }, 
+              gap: { xs: 2, sm: 3, md: 4 }, 
+              mb: 4 
+            }}>
               <StatsCard
                 title="Total Songs"
                 value={totalSongs}
@@ -212,19 +200,24 @@ const Home: React.FC = () => {
           )}
 
           {recentSongs.length > 0 && (
-            <Paper elevation={0} sx={{ p: 3, borderRadius: 4, background: 'rgba(28,28,30,0.8)', boxShadow: '0 4px 24px 0 rgba(0,0,0,0.4)', mb: 2, border: '1px solid rgba(255,255,255,0.1)' }}>
+            <StyledCard sx={{ p: 3, borderRadius: 4, background: 'rgba(28,28,30,0.8)', mb: 2, border: '1px solid rgba(255,255,255,0.1)' }}>
               <Typography variant="h5" component="h3" gutterBottom sx={{ fontWeight: 700, mb: 2, color: '#ffffff' }}>
                 Recently Added Songs
               </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 2 }}>
+              <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fill, minmax(200px, 1fr))', md: 'repeat(auto-fill, minmax(220px, 1fr))' }, 
+                gap: { xs: 1, sm: 2 } 
+              }}>
                 {recentSongs.map((song) => (
-                  <Card key={song.id} sx={{ display: 'flex', alignItems: 'center', p: 2, borderRadius: 3, boxShadow: '0 4px 24px 0 rgba(0,0,0,0.4)', background: 'rgba(44,44,46,0.8)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <CardMedia
-                      component="img"
-                      sx={{ width: 50, height: 50, borderRadius: 2, mr: 2, boxShadow: '0 2px 8px 0 rgba(0,0,0,0.3)' }}
-                      image={getAlbumCoverUrl(song.albumCover)}
-                      alt={song.title}
-                    />
+                  <StyledCard key={song.id} sx={{ display: 'flex', alignItems: 'center', p: 2, borderRadius: 3, background: 'rgba(44,44,46,0.8)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <Box sx={{ mr: 2 }}>
+                      <CoverAvatar
+                        src={getAlbumCoverUrl(song.albumCover)}
+                        alt={song.title}
+                        size={50}
+                      />
+                    </Box>
                     <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                       <Typography variant="body2" noWrap sx={{ fontWeight: 500, color: '#ffffff' }}>
                         {song.title}
@@ -233,23 +226,34 @@ const Home: React.FC = () => {
                         {song.artist}
                       </Typography>
                     </Box>
-                  </Card>
+                  </StyledCard>
                 ))}
               </Box>
-            </Paper>
+            </StyledCard>
           )}
         </Box>
       )}
 
       {/* Features Section */}
-      <Typography variant="h4" component="h2" gutterBottom sx={{ mb: 4, textAlign: 'center', fontWeight: 700, letterSpacing: -1, color: '#ffffff' }}>
+      <Typography variant="h4" component="h2" gutterBottom sx={{ 
+        mb: 4, 
+        textAlign: 'center', 
+        fontWeight: 700, 
+        letterSpacing: -1, 
+        color: '#ffffff',
+        fontSize: { xs: '1.75rem', sm: '2.125rem' }
+      }}>
         Features
       </Typography>
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 4, mb: 6 }}>
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(auto-fit, minmax(250px, 1fr))' }, 
+        gap: { xs: 3, sm: 4 }, 
+        mb: 6 
+      }}>
         {features.map((feature, index) => (
-          <Paper
+          <StyledCard
             key={index}
-            elevation={0}
             sx={{
               height: '100%',
               display: 'flex',
@@ -259,7 +263,6 @@ const Home: React.FC = () => {
               p: 4,
               borderRadius: 4,
               background: 'rgba(28,28,30,0.8)',
-              boxShadow: '0 4px 24px 0 rgba(0,0,0,0.4)',
               backdropFilter: 'blur(12px)',
               border: '1px solid rgba(255,255,255,0.1)',
               transition: 'transform 0.2s, box-shadow 0.2s',
@@ -278,20 +281,18 @@ const Home: React.FC = () => {
             <Typography variant="body2" sx={{ color: '#8e8e93', lineHeight: 1.6 }}>
               {feature.description}
             </Typography>
-          </Paper>
+          </StyledCard>
         ))}
       </Box>
 
       {/* Call to Action */}
       {!isAuthenticated && (
-        <Paper
-          elevation={0}
+        <StyledCard
           sx={{
             bgcolor: 'rgba(255,255,255,0.85)',
             p: 4,
             textAlign: 'center',
             borderRadius: 4,
-            boxShadow: '0 2px 8px 0 rgba(0,0,0,0.04)',
           }}
         >
           <Typography variant="h5" component="h3" gutterBottom sx={{ fontWeight: 700 }}>
@@ -300,23 +301,23 @@ const Home: React.FC = () => {
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
             Join thousands of users who are already enjoying their music with Pa-Pa-Power
           </Typography>
-          <Button
-            variant="contained"
+          <StyledButton
+            variant="primary"
             size="large"
             onClick={() => navigate('/register')}
-            sx={{ mr: 2, borderRadius: 999, px: 4, fontWeight: 600, fontSize: 18 }}
+            sx={{ mr: 2, px: 4, fontSize: 18 }}
           >
             Create Account
-          </Button>
-          <Button
-            variant="outlined"
+          </StyledButton>
+          <StyledButton
+            variant="outline"
             size="large"
             onClick={() => navigate('/login')}
-            sx={{ borderRadius: 999, px: 4, fontWeight: 600, fontSize: 18, borderColor: '#007aff', color: '#007aff', bgcolor: 'rgba(0,122,255,0.04)', '&:hover': { bgcolor: 'rgba(0,122,255,0.12)' } }}
+            sx={{ px: 4, fontSize: 18 }}
           >
             Sign In
-          </Button>
-        </Paper>
+          </StyledButton>
+        </StyledCard>
       )}
     </Box>
   );

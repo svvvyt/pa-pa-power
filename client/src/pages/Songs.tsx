@@ -1,110 +1,93 @@
-import React, { useState } from 'react';
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  CardMedia,
-  IconButton,
-  InputAdornment,
-  Chip,
-  MenuItem,
-} from '@mui/material';
-import {
-  PlayArrow,
-  Pause,
-  MoreVert,
-  Search,
-  CloudUpload,
-  MusicNote,
-  Delete,
-  Edit,
-} from '@mui/icons-material';
-import { useGetSongsQuery, useDeleteSongMutation } from '../store/api/audioApi';
-import { useAudioPlayerContext } from '../contexts/AudioPlayerContext';
-import { useUI } from '../hooks/useUI';
-import { useNotification } from '../contexts/NotificationContext';
-import UploadModal from '../components/Upload/UploadModal';
-import SongEditModal from '../components/Song/SongEditModal';
-import { getAlbumCoverUrl, formatDuration } from '../utils/songUtils';
-import type { Song } from '../types';
-import SongViewModal from '../components/Song/SongViewModal';
-import StyledTextField from '../components/common/StyledTextField';
-import StyledButton from '../components/common/StyledButton';
-import StyledAlert from '../components/common/StyledAlert';
-import StyledMenu from '../components/common/StyledMenu';
-import { COLORS, BORDER_RADIUS, SHADOWS, BACKDROP_FILTERS } from '../utils/themeConstants';
-import UniversalCard from '../components/common/UniversalCard';
-import SongCard from '../components/common/SongCard';
+import React, { useState, useCallback } from 'react';
+import { Box, MenuItem } from '@mui/material';
+import { Edit, Delete } from '@mui/icons-material';
+import { useSongs, useDeleteSong, useSongsFilter, useUI } from '@/hooks';
+import { useAudioPlayerContext, useNotification } from '@/contexts';
+import { UploadModal, SongEditModal, SongViewModal, SongsHeader, SongsSearch, SongsGrid, StyledAlert, StyledMenu } from '@/components';
+import type { Song } from '@/types';
 
 const Songs: React.FC = () => {
-  const { data: songs = [], isLoading, error } = useGetSongsQuery();
-  const [deleteSong] = useDeleteSongMutation();
+  // Data fetching
+  const { data: songs = [], loading, error, refresh } = useSongs();
+  const { mutate: deleteSong, loading: deleting } = useDeleteSong();
+
+  // Audio player context
   const { currentSong, isPlaying, play, pause, setQueue } = useAudioPlayerContext();
+
+  // UI state
   const { openUploadModal, uploadModalOpen, closeUploadModal } = useUI();
   const { showNotification } = useNotification();
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedGenre, setSelectedGenre] = useState<string>('all');
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  // Local state
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [viewSong, setViewSong] = useState<Song | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, song: Song) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setAnchorEl(event.currentTarget);
-    setSelectedSong(song);
-    setMenuOpen(true);
-  };
+  // Filtering and search
+  const {
+    filters,
+    filteredSongs,
+    filterOptions,
+    hasActiveFilters,
+    setSearchTerm,
+    setSelectedGenre,
+    setSelectedArtist,
+    resetFilters,
+  } = useSongsFilter(songs || []);
 
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedSong(null);
-    setMenuOpen(false);
-  };
-
-  const handleEdit = () => {
-    setEditModalOpen(true);
-    handleMenuClose();
-  };
-
-  const handlePlayPause = (song: Song) => {
+  // Event handlers
+  const handlePlayPause = useCallback((song: Song) => {
     if (currentSong?.id === song.id && isPlaying) {
       pause();
     } else {
       setQueue(filteredSongs);
       play(song);
     }
-  };
+  }, [currentSong?.id, isPlaying, pause, setQueue, filteredSongs, play]);
 
-  const handleDelete = async () => {
+  const handleCardClick = useCallback((song: Song) => {
+    setSelectedSong(song);
+    setViewModalOpen(true);
+  }, []);
+
+  const handleMenuClick = useCallback((e: React.MouseEvent<HTMLButtonElement>, song: Song) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation();
+    setAnchorEl(e.currentTarget);
+    setSelectedSong(song);
+    setMenuOpen(true);
+  }, []);
+
+  const handleMenuClose = useCallback(() => {
+    setAnchorEl(null);
+    setSelectedSong(null);
+    setMenuOpen(false);
+  }, []);
+
+  const handleEdit = useCallback(() => {
+    setEditModalOpen(true);
+    // Don't clear selectedSong here, just close the menu
+    setAnchorEl(null);
+    setMenuOpen(false);
+  }, []);
+
+  const handleDelete = useCallback(async () => {
     if (!selectedSong) return;
 
     try {
-      await deleteSong(selectedSong.id).unwrap();
+      await deleteSong(selectedSong.id);
       showNotification('Song deleted successfully', 'success');
       handleMenuClose();
+      refresh(); // Refresh the songs list
     } catch (err) {
       showNotification('Failed to delete song', 'error');
     }
-  };
+  }, [selectedSong, deleteSong, showNotification, handleMenuClose, refresh]);
 
-
-
-  const filteredSongs = songs.filter(song => {
-    const matchesSearch = song.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         song.artist.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         song.album.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesGenre = selectedGenre === 'all' || song.album === selectedGenre;
-    return matchesSearch && matchesGenre;
-  });
-
-  const genres = ['all', ...Array.from(new Set(songs.map(song => song.album)))];
-
+  // Error handling
   if (error) {
     return (
       <Box sx={{ p: 3 }}>
@@ -118,135 +101,105 @@ const Songs: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Box>
-          <Typography variant="h4" sx={{ color: '#ffffff', fontWeight: 700, mb: 1 }}>
-            Songs
-          </Typography>
-          <Typography variant="body1" sx={{ color: '#8e8e93' }}>
-            {songs.length} songs in your library
-          </Typography>
-        </Box>
-        <StyledButton
-          variant="primary"
-          startIcon={<CloudUpload />}
-          onClick={openUploadModal}
-        >
-          Upload Song
-        </StyledButton>
-      </Box>
+      <SongsHeader
+        songCount={songs?.length || 0}
+        onUploadClick={openUploadModal}
+      />
 
       {/* Search and Filters */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 4, flexWrap: 'wrap' }}>
-        <StyledTextField
-          placeholder="Search songs..."
-          value={searchTerm}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search sx={{ color: '#8e8e93' }} />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ minWidth: 300 }}
-          variant="dark"
-        />
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          {genres.map((genre) => (
-            <Chip
-              key={genre}
-              label={genre === 'all' ? 'All Genres' : genre}
-              onClick={() => setSelectedGenre(genre)}
-              sx={{
-                bgcolor: selectedGenre === genre ? '#0a84ff' : 'rgba(44,44,46,0.8)',
-                color: selectedGenre === genre ? '#ffffff' : '#8e8e93',
-                border: '1px solid rgba(255,255,255,0.1)',
-                '&:hover': {
-                  bgcolor: selectedGenre === genre ? '#0070d1' : 'rgba(44,44,46,1)',
-                },
-              }}
+      <SongsSearch
+        filters={filters}
+        filterOptions={filterOptions}
+        onSearchChange={setSearchTerm}
+        onGenreChange={setSelectedGenre}
+        onArtistChange={setSelectedArtist}
+        onResetFilters={resetFilters}
+        hasActiveFilters={hasActiveFilters}
             />
-          ))}
-        </Box>
-      </Box>
 
       {/* Songs Grid */}
-      {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <Typography sx={{ color: '#8e8e93' }}>Loading songs...</Typography>
-        </Box>
-      ) : filteredSongs.length === 0 ? (
-        <Box sx={{ textAlign: 'center', p: 4 }}>
-          <MusicNote sx={{ fontSize: 64, color: '#8e8e93', mb: 2 }} />
-          <Typography variant="h6" sx={{ color: '#ffffff', mb: 1 }}>
-            No songs found
-          </Typography>
-          <Typography sx={{ color: '#8e8e93' }}>
-            {searchTerm || selectedGenre !== 'all' 
-              ? 'Try adjusting your search or filters'
-              : 'Upload your first song to get started'
-            }
-          </Typography>
-        </Box>
-      ) : (
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 3 }}>
-          {filteredSongs.map((song) => {
-            const isCurrentSong = currentSong?.id === song.id;
-            const isCurrentlyPlaying = isCurrentSong && isPlaying;
-
-            return (
-              <SongCard
-                key={song.id}
-                song={song}
+      <SongsGrid
+        songs={filteredSongs}
+        loading={loading}
+        currentSong={currentSong}
+        isPlaying={isPlaying}
                 onPlayPause={handlePlayPause}
-                onCardClick={() => {
-                  setViewSong(song);
-                  setViewModalOpen(true);
+        onCardClick={handleCardClick}
+        onMenuClick={handleMenuClick}
+      />
+
+      {/* Modals */}
+      <UploadModal 
+        open={uploadModalOpen} 
+        onClose={closeUploadModal}
+        onSuccess={() => {
+          console.log('UploadModal onSuccess called, refreshing songs');
+          refresh();
+        }}
+      />
+
+      {selectedSong && editModalOpen && (
+        <SongEditModal 
+          open={editModalOpen} 
+          onClose={() => {
+            setEditModalOpen(false);
+            setSelectedSong(null);
                 }}
-                onMenuClick={handleMenuOpen}
-                isCurrentSong={isCurrentSong}
-                isPlaying={isPlaying}
-              />
-            );
-          })}
-        </Box>
+          song={selectedSong}
+          onSuccess={() => {
+            setEditModalOpen(false);
+            setSelectedSong(null);
+            refresh();
+          }}
+        />
       )}
 
-      {/* Song Menu */}
+      {selectedSong && viewModalOpen && (
+        <SongViewModal
+          open={viewModalOpen}
+          onClose={() => {
+            setViewModalOpen(false);
+            setSelectedSong(null);
+          }}
+          song={selectedSong}
+        />
+      )}
+
+      {/* Context Menu */}
       <StyledMenu
         anchorEl={anchorEl}
         open={menuOpen}
         onClose={handleMenuClose}
-        keepMounted
-        disablePortal={false}
       >
-        <MenuItem onClick={handleEdit} sx={{ color: '#ffffff' }}>
+        <MenuItem 
+          onClick={handleEdit}
+          sx={{ 
+            color: '#ffffff',
+            '&:hover': {
+              bgcolor: 'rgba(255,255,255,0.1)',
+            }
+          }}
+        >
           <Edit sx={{ mr: 1, fontSize: 20 }} />
           Edit
         </MenuItem>
-        <MenuItem onClick={handleDelete} sx={{ color: '#ff453a' }}>
+        <MenuItem 
+          onClick={handleDelete}
+          disabled={deleting}
+          sx={{ 
+            color: '#ff453a',
+            '&:hover': {
+              bgcolor: 'rgba(255,69,58,0.1)',
+            },
+            '&.Mui-disabled': {
+              color: 'rgba(255,69,58,0.5)',
+            }
+          }}
+        >
           <Delete sx={{ mr: 1, fontSize: 20 }} />
           Delete
         </MenuItem>
       </StyledMenu>
-
-      {/* Upload Modal */}
-      <UploadModal open={uploadModalOpen} onClose={closeUploadModal} />
-
-      {/* Edit Modal */}
-      <SongEditModal 
-        open={editModalOpen} 
-        onClose={() => setEditModalOpen(false)}
-        song={selectedSong || undefined}
-      />
-
-      {/* Song View Modal */}
-      <SongViewModal
-        open={viewModalOpen}
-        onClose={() => setViewModalOpen(false)}
-        song={viewSong}
-      />
     </Box>
   );
 };
