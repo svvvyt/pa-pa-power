@@ -1,0 +1,157 @@
+import React, { useState } from 'react';
+import {
+  Box,
+  Paper,
+  Typography,
+  Link,
+  CircularProgress,
+} from '@mui/material';
+import { useAuth } from '../hooks/useAuth';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import StyledTextField from '../components/common/StyledTextField';
+import StyledButton from '../components/common/StyledButton';
+import StyledAlert from '../components/common/StyledAlert';
+import { COLORS, BORDER_RADIUS, SHADOWS, BACKDROP_FILTERS } from '../utils/themeConstants';
+
+const Register: React.FC = () => {
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const { register, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+    const result = await register({ username, email, password });
+    if (result.success) {
+      navigate('/');
+    } else {
+      setError(result.error || 'Registration failed');
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '60vh',
+        background: 'none',
+      }}
+    >
+      <Paper
+        elevation={0}
+        sx={{
+          p: 5,
+          width: '100%',
+          maxWidth: 400,
+          borderRadius: BORDER_RADIUS.xlarge,
+          background: COLORS.background.paper,
+          boxShadow: SHADOWS.medium,
+          backdropFilter: BACKDROP_FILTERS.medium,
+          border: `1px solid ${COLORS.border}`,
+        }}
+      >
+        <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 700, letterSpacing: -1, color: COLORS.text.primary }}>
+          Create Account
+        </Typography>
+        <Typography variant="body2" align="center" sx={{ mb: 3, fontWeight: 500, color: COLORS.text.secondary }}>
+          Join Pa-Pa-Power and start your music journey
+        </Typography>
+
+        {error && (
+          <StyledAlert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </StyledAlert>
+        )}
+
+        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <StyledTextField
+            margin="normal"
+            required
+            fullWidth
+            id="username"
+            label="Username"
+            name="username"
+            autoComplete="username"
+            autoFocus
+            value={username}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
+            disabled={isLoading}
+            variant="dark"
+          />
+          <StyledTextField
+            margin="normal"
+            required
+            fullWidth
+            id="email"
+            label="Email Address"
+            name="email"
+            autoComplete="email"
+            type="email"
+            value={email}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+            disabled={isLoading}
+            variant="dark"
+          />
+          <StyledTextField
+            margin="normal"
+            required
+            fullWidth
+            name="password"
+            label="Password"
+            type="password"
+            id="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+            disabled={isLoading}
+            variant="dark"
+          />
+          <StyledTextField
+            margin="normal"
+            required
+            fullWidth
+            name="confirmPassword"
+            label="Confirm Password"
+            type="password"
+            id="confirmPassword"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+            disabled={isLoading}
+            variant="dark"
+          />
+          <StyledButton
+            type="submit"
+            fullWidth
+            variant="primary"
+            sx={{ mt: 2, mb: 2, fontSize: 18 }}
+            disabled={isLoading}
+          >
+            {isLoading ? <CircularProgress size={24} /> : 'Create Account'}
+          </StyledButton>
+          <Box sx={{ textAlign: 'center' }}>
+            <Link component={RouterLink} to="/login" variant="body2" sx={{ fontWeight: 500, color: COLORS.primary }}>
+              {"Already have an account? Sign In"}
+            </Link>
+          </Box>
+        </Box>
+      </Paper>
+    </Box>
+  );
+};
+
+export default Register; 
