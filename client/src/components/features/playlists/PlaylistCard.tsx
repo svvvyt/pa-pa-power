@@ -2,6 +2,7 @@ import React from 'react';
 import { Typography, Box, Chip } from '@mui/material';
 import { PlaylistPlay } from '@mui/icons-material';
 import { getPlaylistCoverUrl, getAlbumCoverUrl } from '@/utils';
+import { formatDuration } from '@/utils';
 import type { Playlist, Song } from '@/types';
 import { useAudioPlayerContext } from '@/contexts';
 import { UniversalCard } from '@/components';
@@ -16,6 +17,7 @@ interface PlaylistCardProps {
 const PlaylistCard: React.FC<PlaylistCardProps> = ({ playlist, songs = [], onClick, onOptions }) => {
   const { play, pause, setQueue, currentSong, isPlaying } = useAudioPlayerContext();
   const playlistSongs = songs.filter(song => playlist.songIds.includes(song.id));
+  const totalDuration = playlistSongs.reduce((sum, song) => sum + song.duration, 0);
   const isCurrentPlaylistPlaying = Boolean(currentSong && playlistSongs.some(song => song.id === currentSong.id) && isPlaying);
   
   // Get the cover image from the first song in the playlist
@@ -87,7 +89,7 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({ playlist, songs = [], onCli
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
         <Chip
-          label={`${playlist.songIds.length} song${playlist.songIds.length !== 1 ? 's' : ''}`}
+          label={`${formatDuration(totalDuration)}`}
           size="small"
           sx={{
             bgcolor: 'rgba(10,132,255,0.15)',

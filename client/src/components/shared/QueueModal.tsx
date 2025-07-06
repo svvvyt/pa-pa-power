@@ -85,7 +85,7 @@ const QueueModal: React.FC<QueueModalProps> = ({ open, onClose }) => {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <QueueMusic sx={{ color: '#0a84ff' }} />
                 <Typography variant="h6" sx={{ color: '#ffffff', fontWeight: 600 }}>
-                  Queue ({queue.length} songs)
+                  {queue.length} songs
                 </Typography>
               </Box>
               <StyledButton

@@ -36,17 +36,33 @@ const SongCard: React.FC<SongCardProps> = ({
       sx={{
         height: '100%',
         borderRadius: 3,
-        background: 'rgba(28,28,30,0.8)',
+        background: isCurrentSong
+          ? 'linear-gradient(135deg, rgba(10,132,255,0.12) 0%, rgba(28,28,30,0.9) 100%)'
+          : 'rgba(28,28,30,0.8)',
         backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        boxShadow: '0 4px 24px 0 rgba(0,0,0,0.4)',
-        transition: 'all 0.2s',
+        border: isCurrentSong
+          ? '2px solid #0a84ff'
+          : '1px solid rgba(255,255,255,0.1)',
+        boxShadow: isCurrentSong
+          ? '0 0 16px 4px rgba(10,132,255,0.5), 0 4px 24px 0 rgba(0,0,0,0.4)'
+          : '0 4px 24px 0 rgba(0,0,0,0.4)',
+        transition: 'all 0.3s cubic-bezier(.4,2,.6,1)',
         position: 'relative',
         overflow: 'hidden',
+        transform: isCurrentSong ? 'scale(1.04)' : 'none',
+        animation: isCurrentSong ? 'songCardPulse 1.5s infinite alternate' : 'none',
         '&:hover': {
-          transform: 'translateY(-4px)',
-          boxShadow: '0 8px 32px 0 rgba(0,0,0,0.5)',
-          border: '1px solid rgba(10,132,255,0.3)',
+          transform: isCurrentSong ? 'scale(1.07)' : 'translateY(-4px)',
+          boxShadow: isCurrentSong
+            ? '0 0 24px 8px rgba(10,132,255,0.7), 0 8px 32px 0 rgba(0,0,0,0.5)'
+            : '0 8px 32px 0 rgba(0,0,0,0.5)',
+          border: isCurrentSong
+            ? '2px solid #0a84ff'
+            : '1px solid rgba(10,132,255,0.3)',
+        },
+        '@keyframes songCardPulse': {
+          from: { boxShadow: '0 0 16px 4px rgba(10,132,255,0.5), 0 4px 24px 0 rgba(0,0,0,0.4)' },
+          to: { boxShadow: '0 0 32px 12px rgba(10,132,255,0.7), 0 8px 32px 0 rgba(0,0,0,0.5)' },
         },
       }}
       coverOverlay={
